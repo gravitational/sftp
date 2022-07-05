@@ -151,10 +151,10 @@ type RequestPacket struct {
 }
 
 type Attributes struct {
-	Size             uint64
-	UID              uint32
-	GID              uint32
-	Permissions      fs.FileMode
+	Size             *uint64
+	UID              *uint32
+	GID              *uint32
+	Permissions      *fs.FileMode
 	AccessTime       *time.Time
 	ModificationTime *time.Time
 }
@@ -632,26 +632,30 @@ func (p *sshFxpSetstatPacket) respond(svr *Server) responsePacket {
 	b := p.Attrs.([]byte)
 
 	var (
-		err        error
-		size       uint64
-		mode       uint32
-		accessTime *time.Time
-		modTime    *time.Time
-		uid        uint32
-		gid        uint32
+		err         error
+		fileSize    *uint64
+		permissions *uint32
+		accessTime  *time.Time
+		modTime     *time.Time
+		fileUID     *uint32
+		fileGID     *uint32
 	)
 
 	p.Path = toLocalPath(p.Path)
 
 	debug("setstat name \"%s\"", p.Path)
 	if (p.Flags & sshFileXferAttrSize) != 0 {
+		var size uint64
 		if size, b, err = unmarshalUint64Safe(b); err == nil {
 			err = os.Truncate(p.Path, int64(size))
+			fileSize = &size
 		}
 	}
 	if (p.Flags & sshFileXferAttrPermissions) != 0 {
+		var mode uint32
 		if mode, b, err = unmarshalUint32Safe(b); err == nil {
 			err = os.Chmod(p.Path, os.FileMode(mode))
+			permissions = &mode
 		}
 	}
 	if (p.Flags & sshFileXferAttrACmodTime) != 0 {
@@ -668,20 +672,24 @@ func (p *sshFxpSetstatPacket) respond(svr *Server) responsePacket {
 		}
 	}
 	if (p.Flags & sshFileXferAttrUIDGID) != 0 {
+		var uid uint32
+		var gid uint32
 		if uid, b, err = unmarshalUint32Safe(b); err != nil {
 		} else if gid, _, err = unmarshalUint32Safe(b); err != nil {
 		} else {
 			err = os.Chown(p.Path, int(uid), int(gid))
+			fileUID = &uid
+			fileGID = &gid
 		}
 	}
 	svr.reqCallback(RequestPacket{
 		Type: Setstat,
 		Path: p.Path,
 		Attributes: &Attributes{
-			Size:             size,
-			UID:              uid,
-			GID:              gid,
-			Permissions:      fs.FileMode(mode),
+			Size:             fileSize,
+			UID:              fileUID,
+			GID:              fileGID,
+			Permissions:      (*fs.FileMode)(permissions),
 			AccessTime:       accessTime,
 			ModificationTime: modTime,
 		},
@@ -701,24 +709,28 @@ func (p *sshFxpFsetstatPacket) respond(svr *Server) responsePacket {
 	b := p.Attrs.([]byte)
 
 	var (
-		err        error
-		size       uint64
-		mode       uint32
-		accessTime *time.Time
-		modTime    *time.Time
-		uid        uint32
-		gid        uint32
+		err         error
+		fileSize    *uint64
+		permissions *uint32
+		accessTime  *time.Time
+		modTime     *time.Time
+		fileUID     *uint32
+		fileGID     *uint32
 	)
 
 	debug("fsetstat name \"%s\"", f.Name())
 	if (p.Flags & sshFileXferAttrSize) != 0 {
+		var size uint64
 		if size, b, err = unmarshalUint64Safe(b); err == nil {
 			err = f.Truncate(int64(size))
+			fileSize = &size
 		}
 	}
 	if (p.Flags & sshFileXferAttrPermissions) != 0 {
+		var mode uint32
 		if mode, b, err = unmarshalUint32Safe(b); err == nil {
 			err = f.Chmod(os.FileMode(mode))
+			permissions = &mode
 		}
 	}
 	if (p.Flags & sshFileXferAttrACmodTime) != 0 {
@@ -735,20 +747,24 @@ func (p *sshFxpFsetstatPacket) respond(svr *Server) responsePacket {
 		}
 	}
 	if (p.Flags & sshFileXferAttrUIDGID) != 0 {
+		var uid uint32
+		var gid uint32
 		if uid, b, err = unmarshalUint32Safe(b); err != nil {
 		} else if gid, _, err = unmarshalUint32Safe(b); err != nil {
 		} else {
 			err = f.Chown(int(uid), int(gid))
+			fileUID = &uid
+			fileGID = &gid
 		}
 	}
 	svr.reqCallback(RequestPacket{
 		Type: Fsetstat,
 		Path: f.Name(),
 		Attributes: &Attributes{
-			Size:             size,
-			UID:              uid,
-			GID:              gid,
-			Permissions:      fs.FileMode(mode),
+			Size:             fileSize,
+			UID:              fileUID,
+			GID:              fileGID,
+			Permissions:      (*fs.FileMode)(permissions),
 			AccessTime:       accessTime,
 			ModificationTime: modTime,
 		},
