@@ -271,7 +271,7 @@ func TestRequestReadAndWrite(t *testing.T) {
 	p := clientRequestServerPair(t)
 	defer p.Close()
 
-	file, err := p.cli.OpenFile("/foo", os.O_RDWR|os.O_CREATE)
+	file, err := p.cli.OpenFile("/foo", os.O_RDWR|os.O_CREATE, defaultFileMode)
 	require.NoError(t, err)
 	defer file.Close()
 
@@ -293,12 +293,12 @@ func TestOpenFileExclusive(t *testing.T) {
 	defer p.Close()
 
 	// first open should work
-	file, err := p.cli.OpenFile("/foo", os.O_RDWR|os.O_CREATE|os.O_EXCL)
+	file, err := p.cli.OpenFile("/foo", os.O_RDWR|os.O_CREATE|os.O_EXCL, defaultFileMode)
 	require.NoError(t, err)
 	file.Close()
 
 	// second open should return error
-	_, err = p.cli.OpenFile("/foo", os.O_RDWR|os.O_CREATE|os.O_EXCL)
+	_, err = p.cli.OpenFile("/foo", os.O_RDWR|os.O_CREATE|os.O_EXCL, defaultFileMode)
 	assert.Error(t, err)
 
 	checkRequestServerAllocator(t, p)
@@ -309,7 +309,7 @@ func TestOpenFileExclusiveNoSymlinkFollowing(t *testing.T) {
 	defer p.Close()
 
 	// make a directory
-	err := p.cli.Mkdir("/foo")
+	err := p.cli.Mkdir("/foo", defaultDirMode)
 	require.NoError(t, err)
 
 	// make a symlink to that directory
@@ -317,13 +317,13 @@ func TestOpenFileExclusiveNoSymlinkFollowing(t *testing.T) {
 	require.NoError(t, err)
 
 	// with O_EXCL, we can follow directory symlinks
-	file, err := p.cli.OpenFile("/foo2/bar", os.O_RDWR|os.O_CREATE|os.O_EXCL)
+	file, err := p.cli.OpenFile("/foo2/bar", os.O_RDWR|os.O_CREATE|os.O_EXCL, defaultFileMode)
 	require.NoError(t, err)
 	err = file.Close()
 	require.NoError(t, err)
 
 	// we should have created the file above; and this create should fail.
-	_, err = p.cli.OpenFile("/foo/bar", os.O_RDWR|os.O_CREATE|os.O_EXCL)
+	_, err = p.cli.OpenFile("/foo/bar", os.O_RDWR|os.O_CREATE|os.O_EXCL, defaultFileMode)
 	require.Error(t, err)
 
 	// create a dangling symlink
@@ -331,7 +331,7 @@ func TestOpenFileExclusiveNoSymlinkFollowing(t *testing.T) {
 	require.NoError(t, err)
 
 	// opening a dangling symlink with O_CREATE and O_EXCL should fail, regardless of target not existing.
-	_, err = p.cli.OpenFile("/bar", os.O_RDWR|os.O_CREATE|os.O_EXCL)
+	_, err = p.cli.OpenFile("/bar", os.O_RDWR|os.O_CREATE|os.O_EXCL, defaultFileMode)
 	require.Error(t, err)
 
 	checkRequestServerAllocator(t, p)
@@ -340,7 +340,7 @@ func TestOpenFileExclusiveNoSymlinkFollowing(t *testing.T) {
 func TestRequestMkdir(t *testing.T) {
 	p := clientRequestServerPair(t)
 	defer p.Close()
-	err := p.cli.Mkdir("/foo")
+	err := p.cli.Mkdir("/foo", defaultDirMode)
 	require.NoError(t, err)
 	r := p.testHandler()
 	f, err := r.fetch("/foo")
@@ -486,7 +486,7 @@ func TestRequestFsetstat(t *testing.T) {
 	defer p.Close()
 	_, err := putTestFile(p.cli, "/foo", "hello")
 	require.NoError(t, err)
-	fp, err := p.cli.OpenFile("/foo", os.O_WRONLY)
+	fp, err := p.cli.OpenFile("/foo", os.O_WRONLY, defaultFileMode)
 	require.NoError(t, err)
 	err = fp.Truncate(2)
 	require.NoError(t, err)
@@ -645,7 +645,7 @@ func TestRequestSymlinkDanglingFiles(t *testing.T) {
 	require.Error(t, err)
 
 	// opening a dangling link without O_CREATE should fail with os.IsNotExist == true
-	_, err = p.cli.OpenFile("/bar", os.O_RDONLY)
+	_, err = p.cli.OpenFile("/bar", os.O_RDONLY, defaultFileMode)
 	require.True(t, os.IsNotExist(err))
 
 	// overwriting a symlink is not allowed.
@@ -685,11 +685,11 @@ func TestRequestSymlinkDanglingDirectories(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 
 	// making a directory on a dangling symlink SHOULD NOT work.
-	err = p.cli.Mkdir("/bar")
+	err = p.cli.Mkdir("/bar", defaultDirMode)
 	require.Error(t, err)
 
 	// ok, now make directory, so we can test make files through the symlink.
-	err = p.cli.Mkdir("/foo")
+	err = p.cli.Mkdir("/foo", defaultDirMode)
 	require.NoError(t, err)
 
 	// should be able to make a file in that symlinked directory.
@@ -786,7 +786,7 @@ func TestRequestStartDirOption(t *testing.T) {
 	defer p.Close()
 
 	// create the start directory
-	err := p.cli.MkdirAll(startDir)
+	err := p.cli.MkdirAll(startDir, defaultDirMode)
 	require.NoError(t, err)
 	// the working directory must be the defined start directory
 	wd, err := p.cli.Getwd()
