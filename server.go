@@ -296,7 +296,7 @@ func handlePacket(s *Server, p orderedRequest) error {
 			Err:  err,
 		})
 	case *sshFxpMkdirPacket:
-		var mode os.FileMode = defaultFileMode
+		var mode os.FileMode = 0o755
 		var attributes *Attributes
 		if p.Attrs != nil {
 			attrs, _ := unmarshalFileStat(p.Flags, p.Attrs.([]byte))
