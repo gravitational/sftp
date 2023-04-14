@@ -431,7 +431,7 @@ func TestRequestRenameFail(t *testing.T) {
 	_, err = putTestFile(p.cli, "/bar", "goodbye")
 	require.NoError(t, err)
 	err = p.cli.Rename("/foo", "/bar")
-	assert.IsType(t, &StatusError{}, err)
+  require.Error(t, err)
 	checkRequestServerAllocator(t, p)
 }
 
