@@ -1,3 +1,5 @@
+> sftp was archived 2024-06-11. 
+
 sftp
 ----
 
